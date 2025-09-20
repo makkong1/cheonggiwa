@@ -1,0 +1,71 @@
+package com.example.cheonggiwa.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "booking",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"room_id", "check_in", "check_out"}))
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Booking {
+
+//    =====================
+//          예약 테이블
+//    =====================
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // =====================
+    // 객실
+    // =====================
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id", nullable = false)
+    private Room room;
+
+    // =====================
+    // 유저
+    // =====================
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    // =====================
+    // 예약 날짜
+    // =====================
+    @Column(nullable = false)
+    private LocalDate checkIn;
+
+    @Column(nullable = false)
+    private LocalDate checkOut;
+
+    // =====================
+    // 예약 상태
+    // =====================
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CheckStatus checkStatus = CheckStatus.WAITING;
+
+    // =====================
+    // 생성 / 수정 / 삭제
+    // =====================
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    // soft delete
+    private LocalDateTime deletedAt;
+}
