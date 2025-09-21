@@ -4,6 +4,7 @@ import com.example.cheonggiwa.dto.UserDTO;
 import com.example.cheonggiwa.entity.User;
 import com.example.cheonggiwa.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,9 +21,8 @@ public class UserController {
     // 회원 생성
     @PostMapping
     public ResponseEntity<UserDTO> create(@RequestBody User user) {
-        UserDTO saved = userService.createUser(user);
-        return ResponseEntity.created(URI.create("/api/users/" + saved.getId()))
-                .body(saved);
+        UserDTO dto = userService.createUser(user);
+        return new ResponseEntity<>(dto, HttpStatus.CREATED);
     }
 
     // 회원 단건 조회

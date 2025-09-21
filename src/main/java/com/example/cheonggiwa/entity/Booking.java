@@ -54,6 +54,7 @@ public class Booking {
     // =====================
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private CheckStatus checkStatus = CheckStatus.WAITING;
 
     // =====================
