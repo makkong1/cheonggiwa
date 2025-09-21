@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "room")
 @Data
@@ -27,4 +30,8 @@ public class Room {
 
     @Column(nullable = false)
     private Integer price;
+
+    @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<RoomReview> reviews = new ArrayList<>();
 }

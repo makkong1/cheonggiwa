@@ -42,6 +42,7 @@ public class RoomReview {
 
     // 작성 시각
     @CreationTimestamp
-    @Column(name = "created_dt", nullable = false, updatable = false)
-    private LocalDateTime createdDt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
 }

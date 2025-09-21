@@ -2,15 +2,13 @@ package com.example.cheonggiwa.service;
 
 import com.example.cheonggiwa.dto.RoomDTO;
 import com.example.cheonggiwa.dto.RoomDetailDTO;
+import com.example.cheonggiwa.dto.RoomReviewDTO;
 import com.example.cheonggiwa.entity.Room;
 import com.example.cheonggiwa.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,16 +27,23 @@ public class RoomService {
     }
 
     // 방 상세화면
-    public RoomDetailDTO detailRoom(Long room_id) {
-        Room room = roomRepository.findById(room_id)
-                .orElseThrow(() -> new RuntimeException("Room not found: " + room_id));
+    public RoomDetailDTO detailRoom(Long roomId) {
+        Room room = roomRepository.findRoomWithReviewsEntity(roomId); // 엔터티
 
-        // Room → RoomDetailDTO 변환
+        List<RoomReviewDTO> reviewDTOs = room.getReviews()
+                .stream()
+                .map(rr -> RoomReviewDTO.builder()
+                        .id(rr.getId())
+                        .content(rr.getContent())
+                        .createdAt(rr.getCreatedAt())
+                        .build())
+                .toList(); // 엔터티 안에 리스트로있는 리뷰를 스트림을 이용해서 dto로 변환
+
         return RoomDetailDTO.builder()
                 .id(room.getId())
                 .roomName(room.getRoomName())
                 .price(room.getPrice())
-                // bookings, reviews는 나중에 서비스에서 채워줄 수 있음
+                .reviews(reviewDTOs)
                 .build();
     }
 

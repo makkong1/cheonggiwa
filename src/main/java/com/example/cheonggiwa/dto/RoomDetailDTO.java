@@ -17,6 +17,6 @@ public class RoomDetailDTO {
     private Long id;
     private String roomName;
     private Integer price;
-    private List<BookingDTO> bookings;  // 예약 현황
+    private List<BookingDTO> bookings;  // 예약 현황 ??
     private List<RoomReviewDTO> reviews; // 한줄평
 }
