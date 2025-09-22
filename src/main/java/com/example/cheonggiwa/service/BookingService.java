@@ -1,11 +1,102 @@
 package com.example.cheonggiwa.service;
 
+import com.example.cheonggiwa.entity.Booking;
+import com.example.cheonggiwa.entity.CheckStatus;
+import com.example.cheonggiwa.entity.Room;
+import com.example.cheonggiwa.entity.User;
 import com.example.cheonggiwa.repository.BookingRepository;
+import com.example.cheonggiwa.repository.RoomRepository;
+import com.example.cheonggiwa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class BookingService {
+
     private final BookingRepository bookingRepository;
+    private final RoomRepository roomRepository;
+    private final UserRepository userRepository;
+
+    /**
+     * 예약 생성
+     */
+    public Booking createBooking(Long userId, Long roomId, LocalDate checkIn, LocalDate checkOut) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다."));
+
+        // 예약 가능 여부 체크
+        if (!isAvailable(room, checkIn, checkOut)) {
+            throw new IllegalStateException("해당 날짜는 이미 예약이 존재합니다.");
+        }
+
+        Booking booking = Booking.builder()
+                .user(user)
+                .room(room)
+                .checkIn(checkIn)
+                .checkOut(checkOut)
+                .checkStatus(CheckStatus.WAITING)
+                .build();
+
+        return bookingRepository.save(booking);
+    }
+
+    /**
+     * 예약 가능 여부 확인
+     */
+    public boolean isAvailable(Room room, LocalDate checkIn, LocalDate checkOut) {
+        List<Booking> bookings = bookingRepository.findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(
+                room, checkOut, checkIn
+        );
+        return bookings.isEmpty();
+    }
+
+    /**
+     * 예약 취소
+     */
+    public void cancelBooking(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+        booking.setCheckStatus(CheckStatus.WAITING);
+    }
+
+    /**
+     * 유저별 예약 내역 조회
+     */
+    @Transactional(readOnly = true)
+    public List<Booking> getUserBookings(Long userId) {
+        // 존재 여부 체크
+        if (!userRepository.existsById(userId)) {
+            throw new IllegalArgumentException("존재하지 않는 유저입니다.");
+        }
+
+        // DB에서 바로 조회
+        return bookingRepository.findByUserIdAndCheckStatus(userId, CheckStatus.IN);
+    }
+
+    /**
+     * 체크인 처리
+     */
+    public void checkIn(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+        booking.setCheckStatus(CheckStatus.IN);
+    }
+
+    /**
+     * 체크아웃 처리
+     */
+    public void checkOut(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+        booking.setCheckStatus(CheckStatus.OUT);
+    }
 }

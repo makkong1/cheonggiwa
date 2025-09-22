@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -13,10 +12,20 @@ import java.time.LocalDateTime;
 @Table(name = "booking",
         uniqueConstraints = @UniqueConstraint(columnNames = {"room_id", "check_in", "check_out"}))
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Booking {
+
+    @Builder
+    public Booking(Long id, Room room, User user, LocalDate checkIn, LocalDate checkOut, CheckStatus checkStatus, LocalDateTime createdAt, LocalDateTime updatedAt){
+        this.id = id;
+        this.room = room;
+        this.user = user;
+        this.checkIn = checkIn;
+        this.checkOut = checkOut;
+        this.checkStatus = checkStatus;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
 
 //    =====================
 //          예약 테이블
@@ -54,7 +63,7 @@ public class Booking {
     // =====================
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
+//    @Builder.Default
     private CheckStatus checkStatus = CheckStatus.WAITING;
 
     // =====================
@@ -67,6 +76,6 @@ public class Booking {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // soft delete
-    private LocalDateTime deletedAt;
+//    soft delete
+//    private LocalDateTime deletedAt;
 }

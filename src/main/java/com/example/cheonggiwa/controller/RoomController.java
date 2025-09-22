@@ -19,7 +19,6 @@ public class RoomController {
 
     private final RoomService roomService;
 
-
     public ResponseEntity<List<RoomDTO>> allRoom(){
         List<RoomDTO> allRoom = roomService.allRooms();
         return ResponseEntity.ok(allRoom);
@@ -31,7 +30,5 @@ public class RoomController {
         RoomDetailDTO roomDetailDTO = roomService.detailRoom(room_id);
         return ResponseEntity.ok(roomDetailDTO);
     }
-
-
 
 }
