@@ -1,4 +1,4 @@
-package com.example.cheonggiwa.booking;
+package com.example.cheonggiwa.BookingTest;
 
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.CheckStatus;
@@ -53,7 +53,7 @@ class BookingServiceTest {
         Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
 
         assertNotNull(booking.getId());
-        assertEquals(CheckStatus.WAITING, booking.getCheckStatus());
+        assertEquals(CheckStatus.CONFIRMED, booking.getCheckStatus());
         assertEquals(testUser.getId(), booking.getUser().getId());
         assertEquals(testRoom.getId(), booking.getRoom().getId());
     }
@@ -80,10 +80,10 @@ class BookingServiceTest {
         Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
 
         bookingService.checkIn(booking.getId());
-        assertEquals(CheckStatus.IN, booking.getCheckStatus());
+        assertEquals(CheckStatus.IN_PROGRESS, booking.getCheckStatus());
 
         bookingService.checkOut(booking.getId());
-        assertEquals(CheckStatus.OUT, booking.getCheckStatus());
+        assertEquals(CheckStatus.COMPLETED, booking.getCheckStatus());
     }
 
     @Test
@@ -93,13 +93,12 @@ class BookingServiceTest {
 
         Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
 
-        // 취소 시 실제 삭제
-        bookingRepository.delete(booking);
+        // 취소 → 상태 변경 or 삭제 (정책에 따라)
+        bookingService.cancelBooking(booking.getId());
 
-        // DB에서 해당 예약이 더 이상 존재하지 않아야 함
-        assertFalse(bookingRepository.findById(booking.getId()).isPresent());
+        // 여기선 상태가 WAITING으로 돌아가는 걸 가정
+        assertEquals(CheckStatus.WAITING, booking.getCheckStatus());
     }
-
 
     @Test
     void testGetUserBookings() {
@@ -109,7 +108,7 @@ class BookingServiceTest {
         Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
 
         // 상태를 IN으로 변경
-        booking.setCheckStatus(CheckStatus.IN);
+        booking.setCheckStatus(CheckStatus.IN_PROGRESS);
         bookingRepository.save(booking);
 
         List<Booking> userBookings = bookingService.getUserBookings(testUser.getId());

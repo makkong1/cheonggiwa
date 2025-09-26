@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -43,7 +42,7 @@ public class BookingService {
                 .room(room)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
-                .checkStatus(CheckStatus.WAITING)
+                .checkStatus(CheckStatus.CONFIRMED)
                 .build();
 
         return bookingRepository.save(booking);
@@ -79,7 +78,7 @@ public class BookingService {
         }
 
         // DB에서 바로 조회
-        return bookingRepository.findByUserIdAndCheckStatus(userId, CheckStatus.IN);
+        return bookingRepository.findByUserIdAndCheckStatus(userId, CheckStatus.IN_PROGRESS);
     }
 
     /**
@@ -88,15 +87,16 @@ public class BookingService {
     public void checkIn(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
-        booking.setCheckStatus(CheckStatus.IN);
+        booking.setCheckStatus(CheckStatus.IN_PROGRESS);
     }
 
     /**
      * 체크아웃 처리
+     * 스케줄러를 통해서 정해진시간에 WAITING으로 바꾸든 아니면 관리자가 수동으로 수정할수있게 해야한다
      */
     public void checkOut(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
-        booking.setCheckStatus(CheckStatus.OUT);
+        booking.setCheckStatus(CheckStatus.COMPLETED);
     }
 }

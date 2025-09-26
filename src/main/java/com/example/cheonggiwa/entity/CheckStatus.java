@@ -1,7 +1,8 @@
 package com.example.cheonggiwa.entity;
 
 public enum CheckStatus {
-    WAITING, //대기
-    IN, // 예약상태 및 입실
-    OUT // 퇴실
+    WAITING, // 결제 직후 등 아직 입실 전
+    CONFIRMED, // 예약 확정됨 (선택)
+    IN_PROGRESS, // 실제 숙박 중
+    COMPLETED; // 숙박 끝남
 }
