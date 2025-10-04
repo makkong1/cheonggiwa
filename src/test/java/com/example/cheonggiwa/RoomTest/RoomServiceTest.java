@@ -2,21 +2,13 @@ package com.example.cheonggiwa.RoomTest;
 
 import com.example.cheonggiwa.dto.RoomDetailDTO;
 import com.example.cheonggiwa.entity.Room;
-import com.example.cheonggiwa.entity.RoomReview;
-import com.example.cheonggiwa.entity.User;
-import com.example.cheonggiwa.repository.BookingRepository;
 import com.example.cheonggiwa.repository.RoomRepository;
-import com.example.cheonggiwa.repository.RoomReviewRepository;
-import com.example.cheonggiwa.repository.UserRepository;
 import com.example.cheonggiwa.service.RoomService;
 import jakarta.transaction.Transactional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -51,4 +43,3 @@ class RoomServiceTest {
                 "리뷰는 최소 1개 이상 존재해야 한다. 현재 개수: " + detailDTO.getReviews().size());
     }
 }
-
