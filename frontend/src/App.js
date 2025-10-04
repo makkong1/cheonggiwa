@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import "./App.css";
+import styled from "styled-components";
 
 function App() {
   const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null); // 선택한 회원
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     fetch("/api/user")
@@ -12,7 +12,6 @@ function App() {
       .catch((err) => console.error(err));
   }, []);
 
-  // 회원 클릭 시 단건 조회
   const handleUserClick = (id) => {
     fetch(`/api/user/${id}`)
       .then((res) => res.json())
@@ -20,31 +19,102 @@ function App() {
       .catch((err) => console.error(err));
   };
 
-  return (
-    <div className="container">
-      <h1>회원 목록</h1>
-      <div className="user-grid">
-        {users.map(user => (
-          <div className="user-card" key={user.id} onClick={() => handleUserClick(user.id)}>
-            <div className="user-avatar">{user.username.charAt(0).toUpperCase()}</div>
-            <div className="user-info">
-              <h3>{user.username}</h3>
-              <p>예약 건수: 0</p>
-            </div>
-          </div>
-        ))}
-      </div>
+  const closeModal = () => setSelectedUser(null);
 
+  return (
+    <Container>
+      <h1>회원 목록</h1>
+      <UserGrid>
+        {users.map((user) => (
+          <UserCard key={user.id} onClick={() => handleUserClick(user.id)}>
+            <UserAvatar bgColor="red">{user.username.charAt(0).toUpperCase()}</UserAvatar>
+          </UserCard>
+        ))}
+      </UserGrid>
+
+      {/* 모달 팝업 */}
       {selectedUser && (
-        <div className="user-detail">
-          <h2>회원 상세 정보</h2>
-          <p>ID: {selectedUser.id}</p>
-          <p>이름: {selectedUser.username}</p>
-          {/* 추후 예약 정보 등 추가 가능 */}
-        </div>
+        <ModalOverlay onClick={closeModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <CloseButton onClick={closeModal}>&times;</CloseButton>
+            <h2>회원 상세 정보</h2>
+            <p><strong>ID:</strong> {selectedUser.id}</p>
+            <p><strong>이름:</strong> {selectedUser.username}</p>
+          </ModalContent>
+        </ModalOverlay>
       )}
-    </div>
+    </Container>
   );
 }
 
 export default App;
+
+/* styled-components */
+const Container = styled.div`
+  padding: 20px;
+  font-family: Arial, sans-serif;
+`;
+
+const UserGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 16px;
+`;
+
+const UserCard = styled.div`
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+`;
+
+const UserAvatar = styled.div`
+  background: ${props => props.bgColor || 'green'};
+  color: white;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 18px;
+  margin: 0 auto;
+`;
+
+/* 모달 스타일 */
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 10px;
+  padding: 24px;
+  width: 300px;
+  position: relative;
+  text-align: center;
+`;
+
+const CloseButton = styled.span`
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+`;
