@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.example.cheonggiwa.entity.Booking;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,9 +17,21 @@ import java.time.LocalDateTime;
 public class BookingDTO {
     private Long id;
     private Long roomId;
-    private Long userId;
+    private String roomName;
     private LocalDate checkIn;
     private LocalDate checkOut;
-    private String checkStatus; // WAITING, IN, OUT
+    private String checkStatus;
     private LocalDateTime createdAt;
+
+    public static BookingDTO fromEntity(Booking booking) {
+        return BookingDTO.builder()
+                .id(booking.getId())
+                .roomId(booking.getRoom() != null ? booking.getRoom().getId() : null)
+                .roomName(booking.getRoom() != null ? booking.getRoom().getRoomName() : null)
+                .checkIn(booking.getCheckIn())
+                .checkOut(booking.getCheckOut())
+                .checkStatus(booking.getCheckStatus().name())
+                .createdAt(booking.getCreatedAt())
+                .build();
+    }
 }

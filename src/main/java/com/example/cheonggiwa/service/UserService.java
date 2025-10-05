@@ -4,6 +4,8 @@ import com.example.cheonggiwa.dto.UserDTO;
 import com.example.cheonggiwa.entity.User;
 import com.example.cheonggiwa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,6 +13,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -23,8 +26,9 @@ public class UserService {
 
     // 회원 단건 조회
     public UserDTO getUser(Long id) {
-        User user = userRepository.findById(id)
+        User user = userRepository.findWithBookingsById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        log.debug("user : {}", user);
         return UserDTO.fromEntity(user);
     }
 
