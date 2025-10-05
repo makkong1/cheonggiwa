@@ -4,6 +4,9 @@ import styled from "styled-components";
 function Main() {
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [bookingMessage, setBookingMessage] = useState("");
 
   // 전체 객실 목록 가져오기
   useEffect(() => {
@@ -21,7 +24,32 @@ function Main() {
       .catch((err) => console.error("객실 상세 로드 실패:", err));
   };
 
-  const closeModal = () => setSelectedRoom(null);
+   const closeModal = () => {
+    setSelectedRoom(null);
+    setCheckIn("");
+    setCheckOut("");
+    setBookingMessage("");
+  };
+
+  // 예약 요청
+  const handleBooking = () => {
+    if (!checkIn || !checkOut) {
+      setBookingMessage("체크인/체크아웃 날짜를 선택해주세요.");
+      return;
+    }
+
+    fetch(`/api/booking`, {
+      method: "POST",
+    })
+      .then((res) => {
+        if (res.ok) {
+          setBookingMessage("예약이 완료되었습니다!");
+        } else {
+          setBookingMessage("이미 예약된 날짜일 수 있습니다.");
+        }
+      })
+      .catch(() => setBookingMessage("서버 오류가 발생했습니다."));
+  };
 
   return (
     <Container>
@@ -48,6 +76,22 @@ function Main() {
               <Description>{selectedRoom.description}</Description>
             )}
 
+            {/* 예약 가능 시 UI */}
+            {(!selectedRoom.status || selectedRoom.status === "예약 가능") && (
+              <BookingSection>
+                <label>
+                  체크인:
+                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+                </label>
+                <label>
+                  체크아웃:
+                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+                </label>
+                <button onClick={handleBooking}>예약하기</button>
+                {bookingMessage && <BookingMessage>{bookingMessage}</BookingMessage>}
+              </BookingSection>
+            )}
+
             {/* 리뷰 영역 */}
             {selectedRoom.reviews && selectedRoom.reviews.length > 0 && (
               <ReviewsContainer>
@@ -61,6 +105,7 @@ function Main() {
                 ))}
               </ReviewsContainer>
             )}
+
           </ModalContent>
         </ModalOverlay>
       )}
@@ -173,4 +218,40 @@ const Review = styled.div`
     color: #999;
     font-size: 0.75rem;
   }
+`;
+const BookingSection = styled.div`
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+  }
+
+  input {
+    margin-left: 8px;
+  }
+
+  button {
+    padding: 6px 12px;
+    border: none;
+    background-color: #4facfe;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+
+    &:hover {
+      background-color: #00f2fe;
+    }
+  }
+`;
+
+const BookingMessage = styled.div`
+  margin-top: 8px;
+  color: red;
+  font-size: 0.85rem;
 `;

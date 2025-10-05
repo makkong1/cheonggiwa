@@ -1,5 +1,6 @@
 package com.example.cheonggiwa.service;
 
+import com.example.cheonggiwa.dto.BookingDateDTO;
 import com.example.cheonggiwa.dto.RoomDTO;
 import com.example.cheonggiwa.dto.RoomDetailDTO;
 import com.example.cheonggiwa.dto.RoomReviewDTO;
@@ -31,7 +32,11 @@ public class RoomService {
 
         // 방 상세화면
         public RoomDetailDTO detailRoom(Long roomId) {
-                Room room = roomRepository.findRoomWithReviewsEntity(roomId); // 엔터티
+                Room room = roomRepository.findRoomWithReviewsAndBookings(roomId); // 엔터티
+                List<BookingDateDTO> bookings = room.getBookings()
+                                .stream()
+                                .map(BookingDateDTO::fromEntity)
+                                .toList();
 
                 List<RoomReviewDTO> reviewDTOs = room.getReviews()
                                 .stream()
@@ -48,6 +53,7 @@ public class RoomService {
                                 .roomName(room.getRoomName())
                                 .price(room.getPrice())
                                 .reviews(reviewDTOs)
+                                .bookings(bookings)
                                 .build();
         }
 

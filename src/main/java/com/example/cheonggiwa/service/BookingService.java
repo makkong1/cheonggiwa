@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -26,7 +26,7 @@ public class BookingService {
     /**
      * 예약 생성
      */
-    public Booking createBooking(Long userId, Long roomId, LocalDate checkIn, LocalDate checkOut) {
+    public Booking createBooking(Long userId, Long roomId, LocalDateTime checkIn, LocalDateTime checkOut) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
         Room room = roomRepository.findById(roomId)
@@ -51,10 +51,9 @@ public class BookingService {
     /**
      * 예약 가능 여부 확인
      */
-    public boolean isAvailable(Room room, LocalDate checkIn, LocalDate checkOut) {
+    public boolean isAvailable(Room room, LocalDateTime checkIn, LocalDateTime checkOut) {
         List<Booking> bookings = bookingRepository.findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(
-                room, checkOut, checkIn
-        );
+                room, checkOut, checkIn);
         return bookings.isEmpty();
     }
 

@@ -5,18 +5,22 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "booking",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"room_id", "check_in", "check_out"}))
+@Table(name = "booking", uniqueConstraints = @UniqueConstraint(columnNames = { "room_id", "check_in", "check_out" }))
 @Data
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Booking {
 
     @Builder
-    public Booking(Long id, Room room, User user, LocalDate checkIn, LocalDate checkOut, CheckStatus checkStatus, LocalDateTime createdAt, LocalDateTime updatedAt){
+    public Booking(Long id, Room room,
+            User user,
+            LocalDateTime checkIn,
+            LocalDateTime checkOut,
+            CheckStatus checkStatus,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
         this.id = id;
         this.room = room;
         this.user = user;
@@ -27,9 +31,9 @@ public class Booking {
         this.updatedAt = updatedAt;
     }
 
-//    =====================
-//          예약 테이블
-//    =====================
+    // =====================
+    // 예약 테이블
+    // =====================
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,17 +57,17 @@ public class Booking {
     // 예약 날짜
     // =====================
     @Column(nullable = false)
-    private LocalDate checkIn;
+    private LocalDateTime checkIn;
 
     @Column(nullable = false)
-    private LocalDate checkOut;
+    private LocalDateTime checkOut;
 
     // =====================
     // 예약 상태
     // =====================
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-//    @Builder.Default
+    // @Builder.Default
     private CheckStatus checkStatus = CheckStatus.WAITING;
 
     // =====================
@@ -76,6 +80,6 @@ public class Booking {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-//    soft delete
-//    private LocalDateTime deletedAt;
+    // soft delete
+    // private LocalDateTime deletedAt;
 }

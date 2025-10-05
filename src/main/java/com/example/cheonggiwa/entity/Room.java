@@ -17,9 +17,9 @@ import java.util.List;
 @Builder
 public class Room {
 
-//    =====================
-//          객실 테이블
-//    =====================
+    // =====================
+    // 객실 테이블
+    // =====================
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,4 +34,8 @@ public class Room {
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     @Builder.Default
     private List<RoomReview> reviews = new ArrayList<>();
+
+    @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Booking> bookings = new ArrayList<>();
 }

@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.example.cheonggiwa.entity.Booking;
@@ -18,8 +17,8 @@ public class BookingDTO {
     private Long id;
     private Long roomId;
     private String roomName;
-    private LocalDate checkIn;
-    private LocalDate checkOut;
+    private LocalDateTime checkIn;
+    private LocalDateTime checkOut;
     private String checkStatus;
     private LocalDateTime createdAt;
 
