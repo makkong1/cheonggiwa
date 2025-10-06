@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import styled from "styled-components";
 import DatePicker from "react-datepicker";
 
@@ -10,12 +11,35 @@ function Main() {
   const [bookingMessage, setBookingMessage] = useState("");
   const [bookDates, setBookDates] = useState([]);
 
+  // auth states
+  const [currentUser, setCurrentUser] = useState(null); // { id, username }
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [signupUsername, setSignupUsername] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
   // 전체 객실 목록 가져오기
   useEffect(() => {
     fetch("/api/room")
       .then((res) => res.json())
       .then((data) => setRooms(data))
       .catch((err) => console.error("객실 목록 로드 실패:", err));
+  }, []);
+
+  // try restore auth from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("cheonggiwa_auth");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.username) {
+          setCurrentUser(parsed);
+        }
+      } catch {}
+    }
   }, []);
 
   // 객실 클릭 시 상세정보 조회
@@ -42,6 +66,10 @@ function Main() {
 
  // 예약 요청
   const handleBooking = () => {
+    if (!currentUser) {
+      setBookingMessage("로그인 후 예약이 가능합니다.");
+      return;
+    }
     if (!checkIn || !checkOut) {
       setBookingMessage("체크인/체크아웃 날짜를 선택해주세요.");
       return;
@@ -61,7 +89,7 @@ function Main() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId: 25,      // 실제 로그인 유저 ID
+        userId: currentUser?.id,      // 로그인 유저 ID
         roomId: selectedRoom.id,
         checkIn,
         checkOut
@@ -81,9 +109,135 @@ function Main() {
       })
       .catch(() => setBookingMessage("서버 오류가 발생했습니다."));
   };
+
+  // auth handlers
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await fetch("/api/user/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username: loginUsername, password: loginPassword })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "로그인 실패");
+      }
+      // fetch users to map username -> id
+      const listRes = await fetch("/api/user");
+      const users = listRes.ok ? await listRes.json() : [];
+      const me = users.find(u => u.username === loginUsername) || { username: loginUsername };
+      const auth = { id: me.id, username: me.username };
+      setCurrentUser(auth);
+      localStorage.setItem("cheonggiwa_auth", JSON.stringify(auth));
+      setLoginPassword("");
+    } catch (err) {
+      setAuthError(err.message || "로그인 중 오류가 발생했습니다.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    if (signupPassword !== signupConfirm) {
+      setAuthError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const res = await fetch("/api/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username: signupUsername, password: signupPassword })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "회원가입 실패");
+      }
+      // auto-login convenience
+      setLoginUsername(signupUsername);
+      setSignupUsername("");
+      setSignupPassword("");
+      setSignupConfirm("");
+    } catch (err) {
+      setAuthError(err.message || "회원가입 중 오류가 발생했습니다.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setAuthError("");
+    try {
+      await fetch("/api/user/logout", { method: "POST", credentials: "include" });
+    } catch {}
+    setCurrentUser(null);
+    localStorage.removeItem("cheonggiwa_auth");
+  };
   return (
     <Container>
-      <h1><a href="/booking">예약내역으로</a></h1>
+      <TopBar>
+        <Brand>Cheonggiwa</Brand>
+        <Spacer />
+        {!currentUser ? (
+          <AuthInline>
+            <form onSubmit={handleLogin}>
+              <SmallInput
+                placeholder="아이디"
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                required
+              />
+              <SmallInput
+                type="password"
+                placeholder="비밀번호"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                required
+              />
+              <SmallButton type="submit" disabled={authLoading}>로그인</SmallButton>
+            </form>
+            <Divider />
+            <form onSubmit={handleSignup}>
+              <SmallInput
+                placeholder="새 아이디"
+                value={signupUsername}
+                onChange={(e) => setSignupUsername(e.target.value)}
+                required
+              />
+              <SmallInput
+                type="password"
+                placeholder="새 비밀번호"
+                value={signupPassword}
+                onChange={(e) => setSignupPassword(e.target.value)}
+                required
+              />
+              <SmallInput
+                type="password"
+                placeholder="비밀번호 확인"
+                value={signupConfirm}
+                onChange={(e) => setSignupConfirm(e.target.value)}
+                required
+              />
+              <SmallButton type="submit" disabled={authLoading}>회원가입</SmallButton>
+            </form>
+          </AuthInline>
+        ) : (
+          <UserInline>
+            <Avatar>{currentUser.username?.charAt(0)?.toUpperCase()}</Avatar>
+            <Nick>{currentUser.username}</Nick>
+            <NavLink to="/booking">예약내역</NavLink>
+            <SmallButton type="button" onClick={handleLogout}>로그아웃</SmallButton>
+          </UserInline>
+        )}
+      </TopBar>
+      {authError && <AuthError>{authError}</AuthError>}
       <h1>객실 목록</h1>
       <RoomGrid>
         {rooms.map((room) => (
@@ -118,7 +272,9 @@ function Main() {
                   체크아웃:
                   <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
                 </label>
-                <button onClick={handleBooking}>예약하기</button>
+                <button onClick={handleBooking} disabled={!currentUser}>
+                  {currentUser ? "예약하기" : "로그인 후 예약"}
+                </button>
                 {bookingMessage && <BookingMessage>{bookingMessage}</BookingMessage>}
               </BookingSection>
             )}
@@ -160,6 +316,101 @@ const Container = styled.div`
     letter-spacing: -0.2px;
     color: #1f2937;
   }
+`;
+
+const TopBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+`;
+
+const Brand = styled.div`
+  font-weight: 800;
+  color: #0f172a;
+`;
+
+const Spacer = styled.div`
+  flex: 1;
+`;
+
+const AuthInline = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+
+  form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+`;
+
+const UserInline = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: center;
+`;
+
+const Divider = styled.div`
+  width: 1px;
+  height: 28px;
+  background: #e5e7eb;
+`;
+
+const SmallInput = styled.input`
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  font-size: 0.9rem;
+`;
+
+const SmallButton = styled.button`
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4facfe, #00c3fe);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+`;
+
+const NavLink = styled(Link)`
+  padding: 8px 10px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 700;
+`;
+
+const Avatar = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+`;
+
+const Nick = styled.div`
+  color: #0f172a;
+  font-weight: 700;
+`;
+
+const AuthError = styled.div`
+  margin: 6px 0 10px;
+  color: #ef4444;
+  text-align: center;
+  font-weight: 700;
 `;
 
 const RoomGrid = styled.div`

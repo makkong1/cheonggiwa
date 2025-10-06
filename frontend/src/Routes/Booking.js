@@ -27,6 +27,7 @@ function Booking() {
 
   const onCancel = async (id) => {
     if (!window.confirm("해당 예약을 취소하시겠습니까?")) return;
+    alert(id);
     await fetch(`/api/booking/${id}`, { method: "DELETE" });
     load();
   };

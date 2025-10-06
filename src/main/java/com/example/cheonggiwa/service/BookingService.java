@@ -4,6 +4,7 @@ import com.example.cheonggiwa.dto.BookingDateDTO;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.CheckStatus;
 import com.example.cheonggiwa.entity.Room;
+import com.example.cheonggiwa.entity.RoomStatus;
 import com.example.cheonggiwa.entity.User;
 import com.example.cheonggiwa.repository.BookingRepository;
 import com.example.cheonggiwa.repository.RoomRepository;
@@ -28,6 +29,7 @@ public class BookingService {
     /**
      * 예약 생성
      */
+    @Transactional(readOnly = true)
     public Booking createBooking(Long userId, Long roomId, LocalDateTime checkIn, LocalDateTime checkOut) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
@@ -62,10 +64,23 @@ public class BookingService {
     /**
      * 예약 취소
      */
+    @Transactional
     public void cancelBooking(Long bookingId) {
+        // 1. 예약 조회
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
-        booking.setCheckStatus(CheckStatus.WAITING);
+
+        Room room = booking.getRoom(); // 예약된 방
+
+        // 2. 예약 삭제
+        bookingRepository.delete(booking);
+
+        // 3. 해당 방 상태 업데이트
+        // 다른 예약이 아직 남아있으면 OCCUPIED 유지, 아니면 AVAILABLE
+        boolean hasOtherActiveBookings = bookingRepository.existsByRoomAndCheckStatusIn(
+                room, List.of(CheckStatus.CONFIRMED, CheckStatus.WAITING));
+
+        room.setRoomStatus(hasOtherActiveBookings ? RoomStatus.OCCUPIED : RoomStatus.AVAILABLE);
     }
 
     /**

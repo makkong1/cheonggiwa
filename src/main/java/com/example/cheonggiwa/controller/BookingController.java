@@ -5,6 +5,7 @@ import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -31,7 +32,14 @@ public class BookingController {
     // 예약 취소
     @DeleteMapping("/{bookingId}")
     public void cancelBooking(@PathVariable Long bookingId) {
-        bookingService.cancelBooking(bookingId);
+        try {
+            bookingService.cancelBooking(bookingId);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                    "예약 취소 중 오류가 발생했습니다.", e);
+        }
     }
 
     // 유저별 예약 내역 조회
