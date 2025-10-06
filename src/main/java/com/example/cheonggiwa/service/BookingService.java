@@ -1,5 +1,6 @@
 package com.example.cheonggiwa.service;
 
+import com.example.cheonggiwa.dto.BookingDateDTO;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.CheckStatus;
 import com.example.cheonggiwa.entity.Room;
@@ -11,8 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +28,7 @@ public class BookingService {
     /**
      * 예약 생성
      */
-    public Booking createBooking(Long userId, Long roomId, LocalDate checkIn, LocalDate checkOut) {
+    public Booking createBooking(Long userId, Long roomId, LocalDateTime checkIn, LocalDateTime checkOut) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
         Room room = roomRepository.findById(roomId)
@@ -51,10 +53,9 @@ public class BookingService {
     /**
      * 예약 가능 여부 확인
      */
-    public boolean isAvailable(Room room, LocalDate checkIn, LocalDate checkOut) {
+    public boolean isAvailable(Room room, LocalDateTime checkIn, LocalDateTime checkOut) {
         List<Booking> bookings = bookingRepository.findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(
-                room, checkOut, checkIn
-        );
+                room, checkOut, checkIn);
         return bookings.isEmpty();
     }
 
@@ -71,14 +72,17 @@ public class BookingService {
      * 유저별 예약 내역 조회
      */
     @Transactional(readOnly = true)
-    public List<Booking> getUserBookings(Long userId) {
+    public List<BookingDateDTO> getUserBookings(Long userId) {
         // 존재 여부 체크
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("존재하지 않는 유저입니다.");
         }
 
-        // DB에서 바로 조회
-        return bookingRepository.findByUserIdAndCheckStatus(userId, CheckStatus.IN_PROGRESS);
+        // 유저의 모든 예약을 조회하고 DTO로 변환
+        List<Booking> bookings = bookingRepository.findByUserId(userId);
+        return bookings.stream()
+                .map(BookingDateDTO::fromEntity)
+                .collect(Collectors.toList());
     }
 
     /**

@@ -19,15 +19,16 @@ public class RoomController {
 
     private final RoomService roomService;
 
-    public ResponseEntity<List<RoomDTO>> allRoom(){
+    @GetMapping
+    public ResponseEntity<List<RoomDTO>> allRoom() {
         List<RoomDTO> allRoom = roomService.allRooms();
         return ResponseEntity.ok(allRoom);
     }
 
     @GetMapping("/{id}")
     // 방 상세화면 / id를 해야 pk를 해서 인덱스를 탄다. 물론 name에다가 인덱스를 만들면 탈수있을거같은데 일단 id로
-    public ResponseEntity<RoomDetailDTO> roomDetail(@PathVariable Long room_id){
-        RoomDetailDTO roomDetailDTO = roomService.detailRoom(room_id);
+    public ResponseEntity<RoomDetailDTO> roomDetail(@PathVariable Long id) {
+        RoomDetailDTO roomDetailDTO = roomService.detailRoom(id);
         return ResponseEntity.ok(roomDetailDTO);
     }
 

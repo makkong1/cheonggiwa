@@ -1,13 +1,14 @@
 package com.example.cheonggiwa.controller;
 
+import com.example.cheonggiwa.dto.BookingDateDTO;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.service.BookingService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,13 +19,13 @@ public class BookingController {
 
     // 예약 생성
     @PostMapping
-    public Booking createBooking(
-            @RequestParam Long userId,
-            @RequestParam Long roomId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut
-    ) {
-        return bookingService.createBooking(userId, roomId, checkIn, checkOut);
+    public Booking createBooking(@RequestBody Map<String, Object> requestMap) {
+        Long userId = Long.valueOf(requestMap.get("userId").toString());
+        Long roomId = Long.valueOf(requestMap.get("roomId").toString());
+        LocalDate checkIn = LocalDate.parse(requestMap.get("checkIn").toString());
+        LocalDate checkOut = LocalDate.parse(requestMap.get("checkOut").toString());
+
+        return bookingService.createBooking(userId, roomId, checkIn.atStartOfDay(), checkOut.atStartOfDay());
     }
 
     // 예약 취소
@@ -35,7 +36,7 @@ public class BookingController {
 
     // 유저별 예약 내역 조회
     @GetMapping("/user/{userId}")
-    public List<Booking> getUserBookings(@PathVariable Long userId) {
+    public List<BookingDateDTO> getUserBookings(@PathVariable Long userId) {
         return bookingService.getUserBookings(userId);
     }
 
