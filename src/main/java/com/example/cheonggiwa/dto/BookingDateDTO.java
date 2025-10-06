@@ -16,11 +16,13 @@ import com.example.cheonggiwa.entity.Booking;
 public class BookingDateDTO {
     private LocalDateTime checkIn;
     private LocalDateTime checkOut;
+    private String status;
 
     public static BookingDateDTO fromEntity(Booking booking) {
         return BookingDateDTO.builder()
                 .checkIn(booking.getCheckIn())
                 .checkOut(booking.getCheckOut())
+                .status(booking.getCheckStatus().name())
                 .build();
     }
 }

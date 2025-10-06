@@ -31,10 +31,18 @@ public class Room {
     @Column(nullable = false)
     private Integer price;
 
+    // 방 상태: AVAILABLE, OCCUPIED
+    @Enumerated(EnumType.STRING)
+    @Column(name = "room_status", nullable = false)
+    @Builder.Default
+    private RoomStatus roomStatus = RoomStatus.AVAILABLE;
+
+    // 리뷰
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     @Builder.Default
     private List<RoomReview> reviews = new ArrayList<>();
 
+    // 예약 상태
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     @Builder.Default
     private List<Booking> bookings = new ArrayList<>();
