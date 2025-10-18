@@ -1,11 +1,14 @@
 package com.example.cheonggiwa.repository;
 
+// import com.example.cheonggiwa.dto.RoomDetailProjection;
+import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.Room;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -23,6 +26,14 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Query("SELECT r FROM Room r LEFT JOIN FETCH r.reviews WHERE r.id = :roomId")
     Room findRoomWithReviews(@Param("roomId") Long roomId);
 
-    @Query("SELECT r FROM Room r LEFT JOIN FETCH r.bookings WHERE r.id =:roomId")
-    Room findRoomWithBookings(@Param("roomId") Long roomId);
+    // @Query("SELECT r FROM Room r LEFT JOIN FETCH r.bookings WHERE r.id =:roomId")
+    // 현재 또는 곧 있을 예약만 조회
+    @Query("""
+                SELECT b FROM Booking b
+                WHERE b.room.id = :roomId
+                  AND b.checkOut >= CURRENT_DATE
+            """)
+    // Room findRoomWithBookings(@Param("roomId") Long roomId);
+    List<Booking> findActiveBookingsByRoomId(@Param("roomId") Long roomId);
+
 }
