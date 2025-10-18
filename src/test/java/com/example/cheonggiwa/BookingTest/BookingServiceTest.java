@@ -1,120 +1,168 @@
 package com.example.cheonggiwa.BookingTest;
 
+import com.example.cheonggiwa.dto.BookingDateDTO;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.CheckStatus;
 import com.example.cheonggiwa.entity.Room;
+import com.example.cheonggiwa.entity.RoomStatus;
 import com.example.cheonggiwa.entity.User;
 import com.example.cheonggiwa.repository.BookingRepository;
 import com.example.cheonggiwa.repository.RoomRepository;
 import com.example.cheonggiwa.repository.UserRepository;
 import com.example.cheonggiwa.service.BookingService;
+
 import jakarta.transaction.Transactional;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @Transactional
 class BookingServiceTest {
 
-    @Autowired
-    private BookingService bookingService;
-
-    @Autowired
+    @Mock
     private BookingRepository bookingRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
+    @Mock
     private RoomRepository roomRepository;
 
-    private User testUser;
-    private Room testRoom;
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private BookingService bookingService;
+
+    private User user;
+    private Room room;
+    private Booking booking;
 
     @BeforeEach
-    void setup() {
-        // 이미 DB에 더미 데이터가 있다면 여기서 가져오기
-        testUser = userRepository.findAll().get(0);
-        testRoom = roomRepository.findAll().get(0);
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        user = User.builder()
+                .id(1L)
+                .username("tester")
+                .build();
+
+        room = Room.builder()
+                .id(1L)
+                .roomName("Ocean View")
+                .roomStatus(RoomStatus.AVAILABLE)
+                .build();
+
+        booking = Booking.builder()
+                .id(1L)
+                .user(user)
+                .room(room)
+                .checkIn(LocalDateTime.of(2025, 10, 10, 14, 0))
+                .checkOut(LocalDateTime.of(2025, 10, 12, 11, 0))
+                .checkStatus(CheckStatus.CONFIRMED)
+                .build();
     }
 
     @Test
-    void testCreateBooking() {
-        LocalDate checkIn = LocalDate.now().plusDays(1);
-        LocalDate checkOut = LocalDate.now().plusDays(3);
+    @DisplayName("예약 생성 성공")
+    void createBooking_success() {
+        // given
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(roomRepository.findById(1L)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(any(), any(), any()))
+                .thenReturn(List.of());
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
 
-        Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
+        // when
+        Booking result = bookingService.createBooking(1L, 1L,
+                LocalDateTime.of(2025, 10, 10, 14, 0),
+                LocalDateTime.of(2025, 10, 12, 11, 0));
 
-        assertNotNull(booking.getId());
-        assertEquals(CheckStatus.CONFIRMED, booking.getCheckStatus());
-        assertEquals(testUser.getId(), booking.getUser().getId());
-        assertEquals(testRoom.getId(), booking.getRoom().getId());
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getCheckStatus()).isEqualTo(CheckStatus.CONFIRMED);
+        verify(bookingRepository, times(1)).save(any(Booking.class));
     }
 
     @Test
-    void testIsAvailable() {
-        LocalDate checkIn = LocalDate.now().plusDays(1);
-        LocalDate checkOut = LocalDate.now().plusDays(3);
+    @DisplayName("예약 생성 실패 - 중복 예약 존재")
+    void createBooking_fail_dueToOverlap() {
+        // given
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(roomRepository.findById(1L)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(any(), any(), any()))
+                .thenReturn(List.of(booking));
 
-        boolean availableBefore = bookingService.isAvailable(testRoom, checkIn, checkOut);
-        assertTrue(availableBefore);
-
-        bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
-
-        boolean availableAfter = bookingService.isAvailable(testRoom, checkIn, checkOut);
-        assertFalse(availableAfter);
+        // then
+        assertThatThrownBy(() -> bookingService.createBooking(1L, 1L, booking.getCheckIn(), booking.getCheckOut()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("예약이 존재");
     }
 
     @Test
-    void testCheckInAndCheckOut() {
-        LocalDate checkIn = LocalDate.now().plusDays(1);
-        LocalDate checkOut = LocalDate.now().plusDays(2);
+    @DisplayName("예약 취소 성공")
+    void cancelBooking_success() {
+        // given
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.existsByRoomAndCheckStatusIn(any(), any())).thenReturn(false);
 
-        Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
+        // when
+        bookingService.cancelBooking(1L);
 
-        bookingService.checkIn(booking.getId());
-        assertEquals(CheckStatus.IN_PROGRESS, booking.getCheckStatus());
-
-        bookingService.checkOut(booking.getId());
-        assertEquals(CheckStatus.COMPLETED, booking.getCheckStatus());
+        // then
+        verify(bookingRepository).delete(booking);
+        assertThat(room.getRoomStatus()).isEqualTo(RoomStatus.AVAILABLE);
     }
 
     @Test
-    void testCancelBooking() {
-        LocalDate checkIn = LocalDate.now().plusDays(1);
-        LocalDate checkOut = LocalDate.now().plusDays(2);
+    @DisplayName("유저 예약 조회 성공")
+    void getUserBookings_success() {
+        // given
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(bookingRepository.findByUserId(1L)).thenReturn(List.of(booking));
 
-        Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
+        // when
+        List<BookingDateDTO> result = bookingService.getUserBookings(1L);
 
-        // 취소 → 상태 변경 or 삭제 (정책에 따라)
-        bookingService.cancelBooking(booking.getId());
-
-        // 여기선 상태가 WAITING으로 돌아가는 걸 가정
-        assertEquals(CheckStatus.WAITING, booking.getCheckStatus());
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCheckIn()).isEqualTo(booking.getCheckIn());
     }
 
     @Test
-    void testGetUserBookings() {
-        LocalDate checkIn = LocalDate.now().plusDays(1);
-        LocalDate checkOut = LocalDate.now().plusDays(2);
+    @DisplayName("체크인 성공")
+    void checkIn_success() {
+        // given
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
 
-        Booking booking = bookingService.createBooking(testUser.getId(), testRoom.getId(), checkIn, checkOut);
+        // when
+        bookingService.checkIn(1L);
 
-        // 상태를 IN으로 변경
-        booking.setCheckStatus(CheckStatus.IN_PROGRESS);
-        bookingRepository.save(booking);
+        // then
+        assertThat(booking.getCheckStatus()).isEqualTo(CheckStatus.IN_PROGRESS);
+    }
 
-        List<Booking> userBookings = bookingService.getUserBookings(testUser.getId());
-        userBookings.forEach(b -> System.out.println(b.getId()));
+    @Test
+    @DisplayName("체크아웃 성공")
+    void checkOut_success() {
+        // given
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
 
-        assertTrue(userBookings.stream()
-                .anyMatch(b -> b.getId().equals(booking.getId())));
+        // when
+        bookingService.checkOut(1L);
+
+        // then
+        assertThat(booking.getCheckStatus()).isEqualTo(CheckStatus.COMPLETED);
     }
 }
