@@ -1,6 +1,8 @@
 package com.example.cheonggiwa.service;
 
 import com.example.cheonggiwa.dto.BookingDateDTO;
+import com.example.cheonggiwa.dto.BlockedIntervalDTO;
+import com.example.cheonggiwa.dto.MonthlyAvailabilityDTO;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.CheckStatus;
 import com.example.cheonggiwa.entity.Room;
@@ -13,8 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,9 +64,63 @@ public class BookingService {
      * 예약 가능 여부 확인
      */
     public boolean isAvailable(Room lockRoom, LocalDateTime checkIn, LocalDateTime checkOut) {
-        List<Booking> bookings = bookingRepository.findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(
-                lockRoom, checkOut, checkIn);
-        return bookings.isEmpty();
+        // check_status를 'CONFIRMED' 상태만 조회하도록 포함
+        boolean exists = bookingRepository
+                .existsByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqualAndCheckStatusIn(
+                        lockRoom, checkOut, checkIn, List.of(CheckStatus.CONFIRMED, CheckStatus.WAITING));
+        return !exists;
+    }
+
+    /**
+     * 월별 예약 가능 여부 조회
+     *
+     * 해당 객실의 지정 월에 이미 예약된 기간을 조회하여,
+     * 일 단위 블록(interval) 리스트로 반환합니다.
+     *
+     * @param roomId 조회할 객실 ID
+     * @param year   조회할 연도
+     * @param month  조회할 월
+     * @return MonthlyAvailabilityDTO: 객실 ID, 월, 예약 블록 리스트
+     */
+    @Transactional(readOnly = true)
+    public MonthlyAvailabilityDTO getMonthlyAvailability(Long roomId, int year, int month) {
+        YearMonth yearMonth = YearMonth.of(year, month);
+        LocalDate monthStartDate = yearMonth.atDay(1);
+        LocalDate monthEndDate = yearMonth.atEndOfMonth();
+
+        LocalDateTime rangeStart = monthStartDate.atStartOfDay();
+        LocalDateTime rangeEnd = monthEndDate.plusDays(1).atStartOfDay().minusNanos(1); // 월 마지막 날 포함
+
+        // 해당 월과 겹치는 예약 조회
+        List<Booking> overlapping = bookingRepository.findOverlappingBookingsInRange(
+                roomId,
+                rangeStart,
+                rangeEnd,
+                List.of(CheckStatus.CONFIRMED, CheckStatus.WAITING));
+
+        // 예약 정보를 일 단위 블록으로 변환
+        List<BlockedIntervalDTO> intervals = new ArrayList<>();
+        for (Booking b : overlapping) {
+            LocalDate start = b.getCheckIn().toLocalDate();
+            LocalDate end = b.getCheckOut().toLocalDate().minusDays(1); // 체크아웃 당일 제외
+
+            // 월 범위로 제한
+            LocalDate clippedStart = start.isBefore(monthStartDate) ? monthStartDate : start;
+            LocalDate clippedEnd = end.isAfter(monthEndDate) ? monthEndDate : end;
+
+            if (!clippedStart.isAfter(clippedEnd)) {
+                intervals.add(BlockedIntervalDTO.builder()
+                        .start(clippedStart)
+                        .end(clippedEnd)
+                        .build());
+            }
+        }
+
+        return MonthlyAvailabilityDTO.builder()
+                .roomId(roomId)
+                .month(monthStartDate)
+                .blockedIntervals(intervals)
+                .build();
     }
 
     /**

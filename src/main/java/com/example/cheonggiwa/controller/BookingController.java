@@ -1,6 +1,7 @@
 package com.example.cheonggiwa.controller;
 
 import com.example.cheonggiwa.dto.BookingDateDTO;
+import com.example.cheonggiwa.dto.MonthlyAvailabilityDTO;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.service.BookingService;
 import lombok.RequiredArgsConstructor;
@@ -58,5 +59,14 @@ public class BookingController {
     @PostMapping("/{bookingId}/checkout")
     public void checkOut(@PathVariable Long bookingId) {
         bookingService.checkOut(bookingId);
+    }
+
+    // 객실 월별 가용성 조회
+    @GetMapping("/rooms/{roomId}/availability")
+    public MonthlyAvailabilityDTO getRoomMonthlyAvailability(
+            @PathVariable Long roomId,
+            @RequestParam int year,
+            @RequestParam int month) {
+        return bookingService.getMonthlyAvailability(roomId, year, month);
     }
 }

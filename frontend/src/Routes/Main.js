@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import styled from "styled-components";
-// import DatePicker from "react-datepicker";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from "../ThemeContext";
 
 function Main() {
   const { theme, setTheme } = useTheme();
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
+  const [checkIn, setCheckIn] = useState(null);
+  const [checkOut, setCheckOut] = useState(null);
+  const [range, setRange] = useState({ startDate: null, endDate: null });
+  const [blockedDays, setBlockedDays] = useState(new Set());
+  const [availabilityLoadedFor, setAvailabilityLoadedFor] = useState(new Set());
   const [bookingMessage, setBookingMessage] = useState("");
   // const [bookDates, setBookDates] = useState([]);
 
@@ -63,23 +67,30 @@ function Main() {
       .then((data) => {
         setSelectedRoom(data);
         console.log("객실 상태:", data.roomStatus);
+        // 초기 가용성: 현재/다음 달 선조회
+        const today = new Date();
+        const monthsToLoad = [
+          { y: today.getFullYear(), m: today.getMonth() + 1 },
+          { y: today.getFullYear() + (today.getMonth() + 1 === 12 ? 1 : 0), m: ((today.getMonth() + 1) % 12) + 1 },
+        ];
+        monthsToLoad.forEach(({ y, m }) => preloadAvailability(data.id, y, m));
       })
       .catch((err) => console.error("객실 상세 로드 실패:", err));
   };
 
    const closeModal = () => {
     setSelectedRoom(null);
-    setCheckIn("");
-    setCheckOut("");
+    setCheckIn(null);
+    setCheckOut(null);
     setBookingMessage("");
   };
 
   // 모달 팝업 내부 BookingSection 앞쪽에 추가
-  const unavailableBookings = selectedRoom?.bookings
-    ? selectedRoom.bookings.filter(
-        b => b.status === "WAITING" || b.status === "CONFIRMED"
-      )
-    : [];
+  // const unavailableBookings = selectedRoom?.bookings
+  //   ? selectedRoom.bookings.filter(
+  //       b => b.status === "WAITING" || b.status === "CONFIRMED"
+  //     )
+  //   : [];
 
  // 예약 요청
   const handleBooking = () => {
@@ -87,20 +98,16 @@ function Main() {
       setBookingMessage("로그인 후 예약이 가능합니다.");
       return;
     }
-    if (!checkIn || !checkOut) {
+    const start = range.startDate || checkIn;
+    const end = range.endDate || checkOut;
+    if (!start || !end) {
       setBookingMessage("체크인/체크아웃 날짜를 선택해주세요.");
       return;
     }
 
-    const conflict = unavailableBookings.some(b =>
-      new Date(checkIn) < new Date(b.checkOut) &&
-      new Date(checkOut) > new Date(b.checkIn)
-    );
-
-    if (conflict) {
-      setBookingMessage("이미 예약된 날짜입니다.");
-      return;
-    }
+    const fmt = (d) => d.toISOString().slice(0,10);
+    const startStr = fmt(start);
+    const endStr = fmt(end);
 
     fetch(`/api/booking`, {
       method: "POST",
@@ -108,8 +115,8 @@ function Main() {
       body: JSON.stringify({
         userId: currentUser?.id,      // 로그인 유저 ID
         roomId: selectedRoom.id,
-        checkIn,
-        checkOut
+        checkIn: startStr,
+        checkOut: endStr
       })
     })
       .then((res) => {
@@ -118,13 +125,35 @@ function Main() {
           // 예약 완료 후, UI 갱신
           setSelectedRoom(prev => ({
             ...prev,
-            bookings: [...prev.bookings, { checkIn, checkOut, status: "WAITING" }]
+            bookings: [...prev.bookings, { checkIn: startStr, checkOut: endStr, status: "WAITING" }]
           }));
         } else {
           setBookingMessage("예약 실패: 이미 예약된 날짜입니다.");
         }
       })
       .catch(() => setBookingMessage("서버 오류가 발생했습니다."));
+  };
+
+  // 가용성 API 선조회 및 blockedDates 구성
+  const preloadAvailability = async (roomId, year, month) => {
+    const key = `${roomId}:${year}-${String(month).padStart(2, "0")}`;
+    if (availabilityLoadedFor.has(key)) return;
+    try {
+      const res = await fetch(`/api/booking/rooms/${roomId}/availability?year=${year}&month=${month}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const newBlocked = new Set(blockedDays);
+      // intervals [{start, end}] inclusive
+      for (const it of data.blockedIntervals || []) {
+        const start = new Date(it.start + "T00:00:00");
+        const end = new Date(it.end + "T00:00:00");
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          newBlocked.add(d.toISOString().slice(0,10));
+        }
+      }
+      setBlockedDays(newBlocked);
+      setAvailabilityLoadedFor(prev => new Set(prev).add(key));
+    } catch {}
   };
 
   // auth handlers
@@ -318,14 +347,24 @@ function Main() {
           {/* 예약 가능 시 UI */}
           {selectedRoom.roomStatus !== "OCCUPIED" && (
             <BookingSection>
-              <label>
-                체크인:
-                <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
-              </label>
-              <label>
-                체크아웃:
-                <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
-              </label>
+              <div>
+                <DatePicker
+                  selected={checkIn}
+                  onChange={(dates) => {
+                    const [start, end] = dates;
+                    setCheckIn(start);
+                    setCheckOut(end);
+                    setRange({ startDate: start, endDate: end });
+                  }}
+                  startDate={checkIn}
+                  endDate={checkOut}
+                  selectsRange
+                  minDate={new Date()}
+                  inline
+                  excludeDates={[...blockedDays].map(s => new Date(s + "T00:00:00"))}
+                  placeholderText="체크인/체크아웃 선택"
+                />
+              </div>
               <button onClick={handleBooking} disabled={!currentUser}>
                 {currentUser ? "예약하기" : "로그인 후 예약"}
               </button>

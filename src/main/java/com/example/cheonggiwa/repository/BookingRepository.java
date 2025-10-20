@@ -14,8 +14,23 @@ import java.util.List;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-        List<Booking> findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(
-                        Room room, LocalDateTime checkOut, LocalDateTime checkIn);
+
+        boolean existsByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqualAndCheckStatusIn(
+                        Room room, LocalDateTime checkOut, LocalDateTime checkIn, List<CheckStatus> statusList);
+
+        // 지정한 기간과 겹치는 방의 예약 목록 조회 (상태 필터 포함)
+        @Query("""
+                                SELECT b FROM Booking b
+                                WHERE b.room.id = :roomId
+                                  AND b.checkStatus IN :statusList
+                                  AND b.checkIn <= :end
+                                  AND b.checkOut >= :start
+                        """)
+        List<Booking> findOverlappingBookingsInRange(
+                        @Param("roomId") Long roomId,
+                        @Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end,
+                        @Param("statusList") List<CheckStatus> statusList);
 
         @Query("SELECT b FROM Booking b WHERE b.user.id = :userId")
         List<Booking> findByUserId(@Param("userId") Long userId);
