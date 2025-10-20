@@ -14,10 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,8 +42,7 @@ public class RoomService {
                 // 장점: DB에서 한 번에 가져옴, 네트워크 호출 한 번
                 // 단점: 결과가 Room × 리뷰 × 예약 의 Cartesian Product로 나옴
                 // 예: 리뷰 5개, 예약 10개 → 50개의 row가 나옴 / 지금 둘다 가져오는걸 하면 10만건의 데이터가 발생
-                // 따라서 자바에서 DTO로 변환할 때 중복 제거, Map/Set 처리 필요
-                // 이 후 처리 비용 때문에 6초나 걸림
+                // 그래서 기존에 방식으로 유지
 
                 // 리뷰만 조회
                 Room roomWithReviews = roomRepository.findRoomWithReviews(roomId);

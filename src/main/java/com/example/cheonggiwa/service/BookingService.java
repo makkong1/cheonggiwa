@@ -29,21 +29,24 @@ public class BookingService {
     /**
      * 예약 생성
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Booking createBooking(Long userId, Long roomId, LocalDateTime checkIn, LocalDateTime checkOut) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
-        Room room = roomRepository.findById(roomId)
+
+        // 방 엔티티를 비관적 락(PESSIMISTIC_WRITE)으로 조회
+        Room lockRoom = roomRepository.findByIdWithLock(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다."));
 
         // 예약 가능 여부 체크
-        if (!isAvailable(room, checkIn, checkOut)) {
+        if (!isAvailable(lockRoom, checkIn, checkOut)) {
             throw new IllegalStateException("해당 날짜는 이미 예약이 존재합니다.");
         }
 
+        // 예약 엔티티 생성 및 저장
         Booking booking = Booking.builder()
                 .user(user)
-                .room(room)
+                .room(lockRoom)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .checkStatus(CheckStatus.CONFIRMED)
@@ -55,9 +58,9 @@ public class BookingService {
     /**
      * 예약 가능 여부 확인
      */
-    public boolean isAvailable(Room room, LocalDateTime checkIn, LocalDateTime checkOut) {
+    public boolean isAvailable(Room lockRoom, LocalDateTime checkIn, LocalDateTime checkOut) {
         List<Booking> bookings = bookingRepository.findByRoomAndCheckInLessThanEqualAndCheckOutGreaterThanEqual(
-                room, checkOut, checkIn);
+                lockRoom, checkOut, checkIn);
         return bookings.isEmpty();
     }
 

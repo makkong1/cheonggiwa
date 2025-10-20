@@ -3,6 +3,7 @@ package com.example.cheonggiwa.repository;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.CheckStatus;
 import com.example.cheonggiwa.entity.Room;
+
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,4 +26,5 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                         @Param("status") CheckStatus status);
 
         boolean existsByRoomAndCheckStatusIn(Room room, List<CheckStatus> statuses);
+
 }
