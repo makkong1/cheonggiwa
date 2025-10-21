@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import styled from "styled-components";
 import DatePicker from "react-datepicker";
@@ -12,7 +12,8 @@ function Main() {
   const [checkIn, setCheckIn] = useState(null);
   const [checkOut, setCheckOut] = useState(null);
   const [range, setRange] = useState({ startDate: null, endDate: null });
-  const [blockedDays, setBlockedDays] = useState(new Set());
+  // const [blockedDays, setBlockedDays] = useState(new Set());
+  const [blockedDaysMap, setBlockedDaysMap] = useState(new Map());
   const [availabilityLoadedFor, setAvailabilityLoadedFor] = useState(new Set());
   const [bookingMessage, setBookingMessage] = useState("");
   // const [bookDates, setBookDates] = useState([]);
@@ -136,24 +137,37 @@ function Main() {
 
   // 가용성 API 선조회 및 blockedDates 구성
   const preloadAvailability = async (roomId, year, month) => {
-    const key = `${roomId}:${year}-${String(month).padStart(2, "0")}`;
+    const key = `${roomId}:${year}-${String(month).padStart(2,"0")}`;
     if (availabilityLoadedFor.has(key)) return;
+  
     try {
       const res = await fetch(`/api/booking/rooms/${roomId}/availability?year=${year}&month=${month}`);
       if (!res.ok) return;
       const data = await res.json();
-      const newBlocked = new Set(blockedDays);
-      // intervals [{start, end}] inclusive
+  
+      const prevBlocked = blockedDaysMap.get(roomId) || new Set();
+      const newBlocked = new Set(prevBlocked);
+  
       for (const it of data.blockedIntervals || []) {
         const start = new Date(it.start + "T00:00:00");
         const end = new Date(it.end + "T00:00:00");
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
           newBlocked.add(d.toISOString().slice(0,10));
         }
       }
-      setBlockedDays(newBlocked);
+  
+      setBlockedDaysMap(prev => new Map(prev).set(roomId, newBlocked));
       setAvailabilityLoadedFor(prev => new Set(prev).add(key));
-    } catch {}
+    } catch(err) {
+      console.error("가용성 조회 실패:", err);
+    }
+  };
+
+  const handleMonthChange = (date) => {
+    if (!selectedRoom) return;
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    preloadAvailability(selectedRoom.id, year, month);
   };
 
   // auth handlers
@@ -348,22 +362,34 @@ function Main() {
           {selectedRoom.roomStatus !== "OCCUPIED" && (
             <BookingSection>
               <div>
-                <DatePicker
-                  selected={checkIn}
-                  onChange={(dates) => {
-                    const [start, end] = dates;
-                    setCheckIn(start);
-                    setCheckOut(end);
-                    setRange({ startDate: start, endDate: end });
-                  }}
-                  startDate={checkIn}
-                  endDate={checkOut}
-                  selectsRange
-                  minDate={new Date()}
-                  inline
-                  excludeDates={[...blockedDays].map(s => new Date(s + "T00:00:00"))}
-                  placeholderText="체크인/체크아웃 선택"
-                />
+              <DatePicker
+                selected={checkIn}
+                onChange={(dates) => {
+                  const [start, end] = dates;
+                  setCheckIn(start);
+                  setCheckOut(end);
+                  setRange({ startDate: start, endDate: end });
+                }}
+                startDate={checkIn}
+                endDate={checkOut}
+                selectsRange
+                minDate={new Date()}
+                inline
+                excludeDates={[
+                  // 방별 blockedDays 사용
+                  ...(blockedDaysMap.get(selectedRoom?.id) || []).size
+                    ? [...blockedDaysMap.get(selectedRoom.id)].map(s => new Date(s + "T00:00:00"))
+                    : []
+                ]}
+                // 달력 월 변경 시 해당 월 예약일 선조회
+                onMonthChange={(date) => {
+                  if (!selectedRoom) return;
+                  const year = date.getFullYear();
+                  const month = date.getMonth() + 1;
+                  preloadAvailability(selectedRoom.id, year, month);
+                }}
+                placeholderText="체크인/체크아웃 선택"
+              />
               </div>
               <button onClick={handleBooking} disabled={!currentUser}>
                 {currentUser ? "예약하기" : "로그인 후 예약"}
