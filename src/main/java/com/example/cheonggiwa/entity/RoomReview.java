@@ -10,17 +10,16 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "room_review",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"room_id","user_id"}))
+@Table(name = "room_review", uniqueConstraints = @UniqueConstraint(columnNames = { "room_id", "user_id" }))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class RoomReview {
 
-//    =====================
-//          객실 리뷰 테이블
-//    =====================
+    // =====================
+    // 객실 리뷰 테이블
+    // =====================
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
