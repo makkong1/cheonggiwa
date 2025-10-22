@@ -38,34 +38,45 @@ public class RoomService {
         @Transactional(readOnly = true)
         public RoomDetailDTO detailRoom(Long roomId) {
 
-                // Projection 한 번에 리뷰 + 예약을 다 가져오는 방식
-                // 장점: DB에서 한 번에 가져옴, 네트워크 호출 한 번
-                // 단점: 결과가 Room × 리뷰 × 예약 의 Cartesian Product로 나옴
-                // 예: 리뷰 5개, 예약 10개 → 50개의 row가 나옴 / 지금 둘다 가져오는걸 하면 10만건의 데이터가 발생
-                // 그래서 기존에 방식으로 유지
+                // 기존 방식 (N+1 문제 발생)
+                // Room roomWithReviews = roomRepository.findRoomWithReviews(roomId);
+                // Room → RoomReview : 1:N 관계
+                // RoomReview → User : N:1 관계 (하지만 LAZY로 설정했기 때문에 즉시 로딩 X)
+                // findRoomWithReviews() 여기서 user를 불러오는데 이때 N+1 문제 발생
+                // 여기서 "user=프록시" => “필요하면 나중에 DB에서 가져올것이다” 하고 프록시 객체를 만들어 둔다.
 
-                // 리뷰만 조회
-                Room roomWithReviews = roomRepository.findRoomWithReviews(roomId);
+                // if (roomWithReviews == null) {
+                // throw new IllegalArgumentException("존재하지 않는 방입니다.");
+                // }
+
+                // List<Booking> activeBookings =
+                // roomRepository.findActiveBookingsByRoomId(roomId);
+
+                // N+1 문제 해결: 연관 엔티티를 한번에 로딩
+                Room roomWithReviews = roomRepository.findRoomWithReviewsAndUsers(roomId);
                 if (roomWithReviews == null) {
                         throw new IllegalArgumentException("존재하지 않는 방입니다.");
                 }
 
-                // 현재/곧 있을 예약 조회
-                List<Booking> activeBookings = roomRepository.findActiveBookingsByRoomId(roomId);
+                List<Booking> activeBookings = roomRepository.findActiveBookingsWithRoomAndUser(roomId);
 
-                // 리뷰 DTO 변환
+                // 리뷰 DTO 변환 (이제 N+1 문제 없음)
                 List<RoomReviewDTO> reviews = roomWithReviews.getReviews().stream()
                                 .map(rr -> RoomReviewDTO.builder()
                                                 .id(rr.getId())
                                                 .content(rr.getContent())
-                                                .username(rr.getUser().getUsername())
+                                                .username(rr.getUser().getUsername()) // 여기서 lazy로 설정한 user를 실제로 가져온다.
+                                                                                      // 이때 N+1 문제 발생
+                                                                                      // => 그래서
+                                                                                      // findRoomWithReviewsAndUsers()메서드를
+                                                                                      // 만들어서 한번에 로딩
                                                 .createdAt(rr.getCreatedAt())
                                                 .build())
                                 .collect(Collectors.toList());
 
-                // 예약 DTO 변환
+                // 예약 DTO 변환 (이제 N+1 문제 없음)
                 List<BookingDateDTO> bookings = activeBookings.stream()
-                                .map(BookingDateDTO::fromEntity)
+                                .map(BookingDateDTO::fromEntity) // room, user 이미 로딩됨
                                 .collect(Collectors.toList());
 
                 // Room 상태

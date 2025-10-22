@@ -43,6 +43,7 @@ public class Booking {
     // 객실
     // =====================
     @ManyToOne(fetch = FetchType.LAZY)
+    // @ManyToOne(fetch = FetchType.LAZY) 이코드 때문에 예약마다 개별적으로 room을 조회
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
