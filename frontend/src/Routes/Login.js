@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import styled from "styled-components";
+import { useAuth } from "../AuthContext";
 
 function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -13,23 +15,17 @@ function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const res = await fetch("/api/user/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ username, password })
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "로그인 실패");
-      }
+    
+    const result = await login(username, password);
+    console.log(result);
+    
+    if (result.success) {
       navigate("/");
-    } catch (err) {
-      setError(err.message || "로그인 중 오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
+    } else {
+      setError(result.error || "로그인 중 오류가 발생했습니다.");
     }
+    
+    setLoading(false);
   };
 
   return (

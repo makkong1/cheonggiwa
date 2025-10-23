@@ -1,9 +1,5 @@
 package com.example.cheonggiwa.dto;
 
-import java.util.List;
-
-import org.springframework.web.multipart.MultipartFile;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,5 +13,5 @@ public class RoomReviewCreateDTO {
     private Long roomId;
     private Long userId;
     private String content;
-    private List<MultipartFile> images; // 업로드 이미지
+    // private List<MultipartFile> images;
 }

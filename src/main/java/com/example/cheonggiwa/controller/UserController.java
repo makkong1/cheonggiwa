@@ -47,6 +47,22 @@ public class UserController {
         return ResponseEntity.ok("로그아웃 완료");
     }
 
+    // 현재 로그인한 사용자 정보 조회
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getCurrentUser(HttpSession session) {
+        Long userId = (Long) session.getAttribute("loginUser");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            UserDTO userDTO = userService.getUser(userId);
+            return ResponseEntity.ok(userDTO);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
     // 회원 단건 조회
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getOne(@PathVariable Long id) {

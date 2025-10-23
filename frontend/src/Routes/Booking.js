@@ -1,17 +1,24 @@
 import { useEffect, useState, useMemo } from "react";
 import styled from "styled-components";
 import { Link } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 
 function Booking() {
+  const { user, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const userId =25; // 로그인 연동 전까지 임시
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   const load = () => {
+    if (!user) return;
+    
     setLoading(true);
     setErr("");
-    fetch(`/api/booking/user/${userId}`)
+    fetch(`/api/booking/user/${user.id}`)
       .then(res => {
         if (!res.ok) throw new Error("예약 목록을 불러올 수 없습니다.");
         return res.json();
@@ -22,8 +29,10 @@ function Booking() {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (user) {
+      load();
+    }
+  }, [user]);
 
   const onCancel = async (id) => {
     if (!window.confirm("해당 예약을 취소하시겠습니까?")) return;
@@ -42,6 +51,53 @@ function Booking() {
     load();
   };
 
+  const onReview = (booking) => {
+    setSelectedBooking(booking);
+    setReviewContent("");
+    setShowReviewModal(true);
+  };
+
+  const onSubmitReview = async () => {
+    if (!reviewContent.trim()) {
+      alert("리뷰 내용을 입력해주세요.");
+      return;
+    }
+
+    setReviewLoading(true);
+    try {
+      const response = await fetch(`/api/review/${selectedBooking.roomId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomId: selectedBooking.roomId,
+          userId: user.id,
+          content: reviewContent,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("리뷰 작성에 실패했습니다.");
+      }
+
+      alert("리뷰가 성공적으로 작성되었습니다.");
+      setShowReviewModal(false);
+      setReviewContent("");
+      setSelectedBooking(null);
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const onCloseReviewModal = () => {
+    setShowReviewModal(false);
+    setReviewContent("");
+    setSelectedBooking(null);
+  };
+
   const sorted = useMemo(() => {
     return [...bookings].sort((a, b) => {
       const aDate = new Date(a.checkIn || a.startDate || 0).getTime();
@@ -49,6 +105,30 @@ function Booking() {
       return aDate - bDate;
     });
   }, [bookings]);
+
+  // 로그인하지 않은 경우
+  if (authLoading) {
+    return (
+      <Container>
+        <StatusBox>로그인 상태를 확인하는 중...</StatusBox>
+      </Container>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Container>
+        <HeaderBar>
+          <h1>내 예약</h1>
+          <div>
+            <NavLink to="/login">로그인</NavLink>
+            <NavLink to="/">홈으로</NavLink>
+          </div>
+        </HeaderBar>
+        <EmptyBox>로그인이 필요합니다.</EmptyBox>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -77,6 +157,7 @@ function Booking() {
           const canCancel = status === "WAITING" || status === "CONFIRMED";
           const canCheckIn = status === "CONFIRMED";
           const canCheckOut = status === "CHECKED_IN";
+          const canReview = status === "COMPLETED";
 
           return (
             <Card key={id}>
@@ -102,11 +183,44 @@ function Booking() {
                 {canCancel && <ActionButton onClick={() => onCancel(id)}>예약 취소</ActionButton>}
                 {canCheckIn && <PrimaryButton onClick={() => onCheckIn(id)}>체크인</PrimaryButton>}
                 {canCheckOut && <PrimaryButton onClick={() => onCheckOut(id)}>체크아웃</PrimaryButton>}
+                {canReview && <ReviewButton onClick={() => onReview(bk)}>리뷰 작성</ReviewButton>}
               </Actions>
             </Card>
           );
         })}
       </List>
+
+      {/* 리뷰 작성 모달 */}
+      {showReviewModal && (
+        <ModalOverlay onClick={onCloseReviewModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <h2>리뷰 작성</h2>
+              <CloseButton onClick={onCloseReviewModal}>×</CloseButton>
+            </ModalHeader>
+            
+            <ModalBody>
+              <RoomInfo>
+                <strong>{selectedBooking?.room?.roomName || selectedBooking?.roomName || `객실 #${selectedBooking?.roomId}`}</strong>
+              </RoomInfo>
+              
+              <TextArea
+                placeholder="숙소에 대한 솔직한 리뷰를 작성해주세요..."
+                value={reviewContent}
+                onChange={(e) => setReviewContent(e.target.value)}
+                rows={6}
+              />
+            </ModalBody>
+            
+            <ModalFooter>
+              <ModalButton onClick={onCloseReviewModal}>취소</ModalButton>
+              <SubmitButton onClick={onSubmitReview} disabled={reviewLoading}>
+                {reviewLoading ? "작성 중..." : "리뷰 작성"}
+              </SubmitButton>
+            </ModalFooter>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Container>
   );
 }
@@ -297,5 +411,158 @@ const PrimaryButton = styled.button`
     transform: translateY(-1px);
     box-shadow: 0 8px 18px rgba(0,0,0,0.12);
     filter: brightness(1.02);
+  }
+`;
+
+const ReviewButton = styled.button`
+  padding: 8px 12px;
+  border: 1px solid #10b981;
+  background: #ffffff;
+  color: #10b981;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(16, 185, 129, 0.15);
+    background: #f0fdf4;
+  }
+`;
+
+// 모달 스타일
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+`;
+
+const ModalContent = styled.div`
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #111827;
+    font-weight: 700;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 20px 24px;
+`;
+
+const RoomInfo = styled.div`
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 0.95rem;
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 120px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+`;
+
+const ModalFooter = styled.div`
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+`;
+
+const ModalButton = styled.button`
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+  }
+`;
+
+const SubmitButton = styled.button`
+  padding: 10px 16px;
+  border: none;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(16, 185, 129, 0.25);
+    filter: brightness(1.05);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
