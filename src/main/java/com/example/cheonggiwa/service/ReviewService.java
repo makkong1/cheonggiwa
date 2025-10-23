@@ -45,4 +45,25 @@ public class ReviewService {
                                 .build();
         }
 
+        // 리뷰 수정
+        public RoomReviewDTO updateReview(Long reviewId, RoomReviewCreateDTO dto) {
+                RoomReview review = reviewRepository.findById(reviewId)
+                                .orElseThrow(() -> new RuntimeException("Review not found"));
+
+                review.setContent(dto.getContent());
+
+                RoomReview updated = reviewRepository.save(review);
+                return RoomReviewDTO.builder()
+                                .id(updated.getId())
+                                .username(updated.getUser().getUsername())
+                                .content(updated.getContent())
+                                .createdAt(updated.getCreatedAt())
+                                .build();
+        }
+
+        // 리뷰 삭제
+        public void deleteReview(Long reviewId) {
+                reviewRepository.deleteById(reviewId);
+        }
+
 }
