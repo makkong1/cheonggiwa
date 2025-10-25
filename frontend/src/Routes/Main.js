@@ -16,6 +16,10 @@ function Main() {
   const [blockedDaysMap, setBlockedDaysMap] = useState(new Map());
   const [availabilityLoadedFor, setAvailabilityLoadedFor] = useState(new Set());
   const [bookingMessage, setBookingMessage] = useState("");
+  const [showReviews, setShowReviews] = useState(false);
+  const [showReviewOverlay, setShowReviewOverlay] = useState(false);
+  const [isClosingReview, setIsClosingReview] = useState(false);
+  const [isClosingRoomModal, setIsClosingRoomModal] = useState(false);
   // const [bookDates, setBookDates] = useState([]);
 
   // auth states
@@ -80,10 +84,26 @@ function Main() {
   };
 
    const closeModal = () => {
-    setSelectedRoom(null);
-    setCheckIn(null);
-    setCheckOut(null);
-    setBookingMessage("");
+    setIsClosingRoomModal(true);
+    setTimeout(() => {
+      setSelectedRoom(null);
+      setCheckIn(null);
+      setCheckOut(null);
+      setBookingMessage("");
+      setShowReviews(false);
+      setShowReviewOverlay(false);
+      setIsClosingReview(false);
+      setIsClosingRoomModal(false);
+    }, 300); // 애니메이션 시간과 맞춤
+  };
+
+  // 리뷰 오버레이 닫기 함수 (애니메이션 포함)
+  const closeReviewOverlay = () => {
+    setIsClosingReview(true);
+    setTimeout(() => {
+      setShowReviewOverlay(false);
+      setIsClosingReview(false);
+    }, 300); // 애니메이션 시간과 맞춤
   };
 
   // 모달 팝업 내부 BookingSection 앞쪽에 추가
@@ -344,8 +364,8 @@ function Main() {
 
       {/* 모달 팝업 */}
       {selectedRoom && (
-        <ModalOverlay onClick={closeModal}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
+        <ModalOverlay onClick={closeModal} isClosing={isClosingRoomModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()} isClosing={isClosingRoomModal}>
             <CloseButton onClick={closeModal}>&times;</CloseButton>
             <h2>{selectedRoom.roomName}</h2>
             <p><strong>가격:</strong> ₩{selectedRoom.price}</p>
@@ -400,20 +420,34 @@ function Main() {
 
             {/* 리뷰 영역 */}
             {selectedRoom.reviews && selectedRoom.reviews.length > 0 && (
-              <ReviewsContainer>
-                <h3>리뷰</h3>
-                {selectedRoom.reviews.map((review) => (
-                  <Review key={review.id}>
-                    <p>{review.username}</p>
-                    <p>{review.content}</p>
-                    <small>{new Date(review.createdAt).toLocaleString()}</small>
-                  </Review>
-                ))}
-              </ReviewsContainer>
+              <ReviewsSection>
+                <ReviewButton onClick={() => setShowReviewOverlay(true)}>
+                  리뷰 보기 ({selectedRoom.reviews.length}개)
+                </ReviewButton>
+              </ReviewsSection>
             )}
 
           </ModalContent>
         </ModalOverlay>
+      )}
+
+      {/* 리뷰 오버레이 */}
+      {showReviewOverlay && selectedRoom && (
+        <ReviewOverlay onClick={closeReviewOverlay} isClosing={isClosingReview}>
+          <ReviewOverlayContent onClick={(e) => e.stopPropagation()} isClosing={isClosingReview}>
+            <ReviewCloseButton onClick={closeReviewOverlay}>&times;</ReviewCloseButton>
+            <ReviewTitle>리뷰 ({selectedRoom.reviews.length}개)</ReviewTitle>
+            <ReviewList>
+              {selectedRoom.reviews.map((review) => (
+                <ReviewItem key={review.id}>
+                  <ReviewUser>{review.username}</ReviewUser>
+                  <ReviewContent>{review.content}</ReviewContent>
+                  <ReviewDate>{new Date(review.createdAt).toLocaleString()}</ReviewDate>
+                </ReviewItem>
+              ))}
+            </ReviewList>
+          </ReviewOverlayContent>
+        </ReviewOverlay>
       )}
     </Container>
   );
@@ -620,6 +654,17 @@ const ModalOverlay = styled.div`
   justify-content: center;
   z-index: 999;
   backdrop-filter: blur(2px);
+  animation: ${props => props.isClosing ? 'modalFadeOut 0.3s ease' : 'modalFadeIn 0.3s ease'};
+  
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes modalFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
 `;
 
 const ModalContent = styled.div`
@@ -635,6 +680,29 @@ const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
   box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+  animation: ${props => props.isClosing ? 'modalSlideDown 0.3s ease' : 'modalSlideUp 0.3s ease'};
+  
+  @keyframes modalSlideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  @keyframes modalSlideDown {
+    from { 
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to { 
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+  }
 
   h2 {
     margin: 0 0 8px 0;
@@ -668,13 +736,40 @@ const Description = styled.p`
   line-height: 1.5;
 `;
 
- /* 리뷰 영역 */
-const ReviewsContainer = styled.div`
+/* 리뷰 섹션 */
+const ReviewsSection = styled.div`
   margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ReviewButton = styled.button`
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+
+  &:hover {
+    background: var(--surface);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+`;
+
+/* 리뷰 영역 */
+const ReviewsContainer = styled.div`
   text-align: left;
   flex: 1;               /* 남은 공간 채우기 */
   overflow-y: auto;      /* 스크롤 */
   padding-right: 8px;    /* 스크롤 겹침 방지 */
+  min-height: 300px;     /* 최소 높이를 예약 컨테이너만큼 */
+  max-height: 400px;     /* 최대 높이 증가 */
 
   /* 스크롤바 스타일 (웹킷) */
   &::-webkit-scrollbar {
@@ -769,4 +864,127 @@ const ThemeToggle = styled.button`
   background: var(--bg-elevated);
   color: var(--text);
   cursor: pointer;
+`;
+
+/* 리뷰 오버레이 */
+const ReviewOverlay = styled.div`
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(17,24,39,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+  animation: ${props => props.isClosing ? 'fadeOut 0.3s ease' : 'fadeIn 0.3s ease'};
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+`;
+
+const ReviewOverlayContent = styled.div`
+  background: var(--bg-elevated);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: ${props => props.isClosing ? 'slideDown 0.3s ease' : 'slideUp 0.3s ease'};
+  
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  @keyframes slideDown {
+    from { 
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to { 
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+  }
+`;
+
+const ReviewCloseButton = styled.span`
+  position: absolute;
+  top: 16px; right: 20px;
+  font-size: 28px;
+  cursor: pointer;
+  color: #64748b;
+  line-height: 1;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: var(--text);
+    transform: scale(1.1);
+  }
+`;
+
+const ReviewTitle = styled.h2`
+  margin: 0 0 20px 0;
+  font-size: 1.5rem;
+  color: var(--text);
+  text-align: center;
+`;
+
+const ReviewList = styled.div`
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+
+  /* 스크롤바 스타일 */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 8px;
+  }
+`;
+
+const ReviewItem = styled.div`
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ReviewUser = styled.div`
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  font-size: 1rem;
+`;
+
+const ReviewContent = styled.div`
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+`;
+
+const ReviewDate = styled.small`
+  color: #94a3b8;
+  font-size: 0.8rem;
 `;

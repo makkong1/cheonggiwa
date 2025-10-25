@@ -20,12 +20,4 @@ public interface ReviewRepository extends JpaRepository<RoomReview, Long> {
             """)
     List<RoomReview> findByRoomIdWithUser(@Param("roomId") Long roomId);
 
-    // 방 상세화면에서 리뷰 목록 조회 / 나중에할거
-    // @Query("""
-    // SELECT rr FROM RoomReview rr
-    // LEFT JOIN FETCH rr.user u
-    // LEFT JOIN FETCH rr.files f
-    // WHERE rr.room.id = :roomId
-    // """)
-    // List<RoomReview> findByRoomIdWithUserAndFiles(@Param("roomId") Long roomId);
 }

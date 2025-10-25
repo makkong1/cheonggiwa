@@ -24,26 +24,9 @@ public class SecurityConfig {
                                 // CORS 설정
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                                // 요청별 접근 제어
+                                // 모든 요청 허용 (개발용)
                                 .authorizeHttpRequests(auth -> auth
-                                                // 비로그인 상태에서도 접근 가능한 URL
-                                                .requestMatchers(
-                                                                "/api/user/register", // 회원가입
-                                                                "/api/user/login", // 로그인
-                                                                "/api/user/logout", // 로그아웃
-                                                                "/api/room/**", // 객실 목록, 상세보기
-                                                                "/api/hello")
-                                                .permitAll()
-
-                                                // 로그인된 사용자만 접근 가능
-                                                .requestMatchers(
-                                                                "/api/user/me", // 내 정보
-                                                                "/api/booking/**", // 예약
-                                                                "/api/review/**" // 리뷰
-                                                ).authenticated()
-
-                                                // 그 외는 기본적으로 인증 필요
-                                                .anyRequest().authenticated())
+                                                .anyRequest().permitAll())
 
                                 // 폼 로그인 & 기본 인증 비활성화 (React fetch로 처리)
                                 .formLogin(form -> form.disable())
