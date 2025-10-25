@@ -42,4 +42,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
         boolean existsByRoomAndCheckStatusIn(Room room, List<CheckStatus> statuses);
 
+        // Main.js용: 예약 가용성 조회 (날짜 범위별)
+        @Query("""
+                        SELECT b.checkIn, b.checkOut, b.checkStatus
+                        FROM Booking b
+                        WHERE b.room.id = :roomId
+                          AND b.checkIn <= :endDate
+                          AND b.checkOut >= :startDate
+                          AND b.checkStatus IN :statusList
+                        ORDER BY b.checkIn
+                        """)
+        List<Object[]> findAvailabilityForMain(
+                        @Param("roomId") Long roomId,
+                        @Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate,
+                        @Param("statusList") List<CheckStatus> statusList);
+
 }
