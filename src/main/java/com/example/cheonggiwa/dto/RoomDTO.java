@@ -14,6 +14,7 @@ public class RoomDTO {
     private Long id;
     private String roomName;
     private Integer price;
+    private String roomStatus;
 
     public static RoomDTO fromEntity(Room room) {
         return RoomDTO.builder()

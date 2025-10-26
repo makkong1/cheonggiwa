@@ -180,4 +180,13 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
         booking.setCheckStatus(CheckStatus.COMPLETED);
     }
+
+    /**
+     * Main.js용: 예약 가용성 조회 (날짜 범위별)
+     */
+    @Transactional(readOnly = true)
+    public List<Object[]> getAvailabilityForMain(Long roomId, LocalDateTime startDate, LocalDateTime endDate,
+            List<CheckStatus> statusList) {
+        return bookingRepository.findAvailabilityForMain(roomId, startDate, endDate, statusList);
+    }
 }

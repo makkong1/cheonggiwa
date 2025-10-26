@@ -1,6 +1,5 @@
 package com.example.cheonggiwa.repository;
 
-// import com.example.cheonggiwa.dto.RoomDetailProjection;
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.Room;
 import io.lettuce.core.dynamic.annotation.Param;
@@ -60,7 +59,7 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
   // Main.js용: 객실 목록 조회 (기본 정보만)
   @Query("""
-      SELECT r.id, r.roomName, r.price, r.roomStatus, r.description
+      SELECT r.id, r.roomName, r.price, r.roomStatus
       FROM Room r
       ORDER BY r.id
       """)

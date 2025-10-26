@@ -47,12 +47,22 @@ public class UserService {
         return UserDTO.fromEntity(user);
     }
 
-    // 전체 회원 조회
+    // 전체 회원 조회 (Main.js용 - 필요한 필드만 조회)
     public List<UserDTO> getAllUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(UserDTO::fromEntity)
+        // Main.js에서 필요한 필드만 조회: id, username
+        List<Object[]> userData = userRepository.findUsersForMain();
+
+        return userData.stream()
+                .map(row -> UserDTO.builder()
+                        .id((Long) row[0])
+                        .username((String) row[1])
+                        .build())
                 .collect(Collectors.toList());
+    }
+
+    // Main.js용: 전체 회원 조회 (기본 정보만)
+    public List<Object[]> getAllUsersForMain() {
+        return userRepository.findUsersForMain();
     }
 
     // 회원 수정

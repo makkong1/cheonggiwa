@@ -14,6 +14,8 @@ import com.example.cheonggiwa.repository.RoomRepository;
 import com.example.cheonggiwa.repository.UserRepository;
 import com.example.cheonggiwa.repository.ReviewRepository;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -64,6 +66,11 @@ public class ReviewService {
         // 리뷰 삭제
         public void deleteReview(Long reviewId) {
                 reviewRepository.deleteById(reviewId);
+        }
+
+        // Main.js용: 객실별 리뷰 조회 (기본 정보만)
+        public List<Object[]> getReviewsForMain(Long roomId) {
+                return reviewRepository.findReviewsForMain(roomId);
         }
 
 }

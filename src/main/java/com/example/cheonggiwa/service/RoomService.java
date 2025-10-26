@@ -1,10 +1,8 @@
 package com.example.cheonggiwa.service;
 
-import com.example.cheonggiwa.dto.BookingDateDTO;
 import com.example.cheonggiwa.dto.RoomDTO;
 import com.example.cheonggiwa.dto.RoomDetailDTO;
 import com.example.cheonggiwa.dto.RoomReviewDTO;
-import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.Room;
 import com.example.cheonggiwa.repository.RoomRepository;
 
@@ -24,72 +22,56 @@ public class RoomService {
 
         private final RoomRepository roomRepository;
 
-        // 방 목록
+        // 방 목록 (Main.js용 - 필요한 필드만 조회)
         public List<RoomDTO> allRooms() {
-                List<Room> allRooms = roomRepository.findAll();
+                // Main.js에서 필요한 필드만 조회: id, roomName, price, roomStatus
+                List<Object[]> roomData = roomRepository.findRoomsForMain();
 
-                // Stream 이용해서 Room -> RoomDTO 변환
-                return allRooms.stream()
-                                .map(RoomDTO::fromEntity)
+                return roomData.stream()
+                                .map(row -> RoomDTO.builder()
+                                                .id((Long) row[0])
+                                                .roomName((String) row[1])
+                                                .price((Integer) row[2])
+                                                .roomStatus(row[3] != null ? row[3].toString() : null)
+                                                .build())
                                 .toList();
         }
 
-        // 방 상세화면
+        // Main.js용: 방 목록 조회 (기본 정보만)
+        public List<Object[]> allRoomsForMain() {
+                return roomRepository.findRoomsForMain();
+        }
+
+        // 방 상세화면 (Main.js용 - 필요한 필드만 조회)
         @Transactional(readOnly = true)
         public RoomDetailDTO detailRoom(Long roomId) {
-
-                // 기존 방식 (N+1 문제 발생)
-                // Room roomWithReviews = roomRepository.findRoomWithReviews(roomId);
-                // Room → RoomReview : 1:N 관계
-                // RoomReview → User : N:1 관계 (하지만 LAZY로 설정했기 때문에 즉시 로딩 X)
-                // findRoomWithReviews() 여기서 user를 불러오는데 이때 N+1 문제 발생
-                // 여기서 "user=프록시" => “필요하면 나중에 DB에서 가져올것이다” 하고 프록시 객체를 만들어 둔다.
-
-                // if (roomWithReviews == null) {
-                // throw new IllegalArgumentException("존재하지 않는 방입니다.");
-                // }
-
-                // List<Booking> activeBookings =
-                // roomRepository.findActiveBookingsByRoomId(roomId);
-
-                // N+1 문제 해결: 연관 엔티티를 한번에 로딩
+                // Main.js에서 필요한 필드만 조회: id, roomName, price, roomStatus, description, reviews
                 Room roomWithReviews = roomRepository.findRoomWithReviewsAndUsers(roomId);
                 if (roomWithReviews == null) {
                         throw new IllegalArgumentException("존재하지 않는 방입니다.");
                 }
 
-                List<Booking> activeBookings = roomRepository.findActiveBookingsWithRoomAndUser(roomId);
-
-                // 리뷰 DTO 변환 (이제 N+1 문제 없음)
+                // 리뷰 DTO 변환 (N+1 문제 해결됨)
                 List<RoomReviewDTO> reviews = roomWithReviews.getReviews().stream()
                                 .map(rr -> RoomReviewDTO.builder()
                                                 .id(rr.getId())
                                                 .content(rr.getContent())
-                                                .username(rr.getUser().getUsername()) // 여기서 lazy로 설정한 user를 실제로 가져온다.
-                                                                                      // 이때 N+1 문제 발생
-                                                                                      // => 그래서
-                                                                                      // findRoomWithReviewsAndUsers()메서드를
-                                                                                      // 만들어서 한번에 로딩
+                                                .username(rr.getUser().getUsername())
                                                 .createdAt(rr.getCreatedAt())
                                                 .build())
-                                .collect(Collectors.toList());
-
-                // 예약 DTO 변환 (이제 N+1 문제 없음)
-                List<BookingDateDTO> bookings = activeBookings.stream()
-                                .map(BookingDateDTO::fromEntity) // room, user 이미 로딩됨
                                 .collect(Collectors.toList());
 
                 // Room 상태
                 String roomStatus = roomWithReviews.getRoomStatus().name();
 
-                // DTO 반환
+                // DTO 반환 (Main.js에서 필요한 필드만)
                 return RoomDetailDTO.builder()
                                 .id(roomWithReviews.getId())
                                 .roomName(roomWithReviews.getRoomName())
                                 .price(roomWithReviews.getPrice())
-                                .reviews(reviews)
-                                .bookings(bookings)
                                 .roomStatus(roomStatus)
+                                .description(null) // Room 엔티티에 description 필드가 없으므로 null 처리
+                                .reviews(reviews)
                                 .build();
         }
 
