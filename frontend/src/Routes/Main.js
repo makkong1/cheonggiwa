@@ -644,7 +644,9 @@ const RoomImage = styled.div`
 `;
 
 /* 모달 */
-const ModalOverlay = styled.div`
+const ModalOverlay = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isClosing',
+})`
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
@@ -667,7 +669,9 @@ const ModalOverlay = styled.div`
   }
 `;
 
-const ModalContent = styled.div`
+const ModalContent = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isClosing',
+})`
   background: var(--bg-elevated);
   border-radius: 14px;
   padding: 24px;
@@ -867,7 +871,9 @@ const ThemeToggle = styled.button`
 `;
 
 /* 리뷰 오버레이 */
-const ReviewOverlay = styled.div`
+const ReviewOverlay = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isClosing',
+})`
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
@@ -890,7 +896,9 @@ const ReviewOverlay = styled.div`
   }
 `;
 
-const ReviewOverlayContent = styled.div`
+const ReviewOverlayContent = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isClosing',
+})`
   background: var(--bg-elevated);
   border-radius: 16px;
   padding: 24px;

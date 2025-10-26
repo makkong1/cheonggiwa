@@ -2,7 +2,7 @@ package com.example.cheonggiwa.repository;
 
 import com.example.cheonggiwa.entity.Booking;
 import com.example.cheonggiwa.entity.Room;
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
